@@ -148,6 +148,10 @@ void vMBPortSerialEnable(BOOL xRxEnable, BOOL xTxEnable)
     else
     {
         /* stop serial transmit */
+        /*
+         * 等待 TRANS START 信号 ???
+         * 分析该函数并无多大意义该函数
+         * */
         rt_event_recv(&event_serial, EVENT_SERIAL_TRANS_START,
                 RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, 0,
                 &recved_event);
@@ -191,6 +195,7 @@ void prvvUARTTxReadyISR(void)
  */
 void prvvUARTRxISR(void)
 {
+    /* 接收到数据回调 RTU 协议层的处理函数 */
     pxMBFrameCBByteReceived();
 }
 
@@ -219,7 +224,9 @@ static void serial_soft_trans_irq(void* parameter) {
  *
  * @return return RT_EOK
  */
+/* 接收回调函数 */
 static rt_err_t serial_rx_ind(rt_device_t dev, rt_size_t size) {
+    /* RTU 协议层单次只读取一个字节进行处理，所以这里循环处理 */
     while(size--)
         prvvUARTRxISR();
     return RT_EOK;

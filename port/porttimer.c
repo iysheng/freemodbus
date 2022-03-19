@@ -34,6 +34,7 @@ static void timer_timeout_ind(void* parameter);
 /* ----------------------- Start implementation -----------------------------*/
 BOOL xMBPortTimersInit(USHORT usTim1Timerout50us)
 {
+    /* 初始化 T35 软件定时器，超时周期是 usTim1Timerout50us * 50us */
     rt_timer_init(&timer, "slave timer",
                    timer_timeout_ind, /* bind timeout callback function */
                    RT_NULL,
@@ -44,6 +45,7 @@ BOOL xMBPortTimersInit(USHORT usTim1Timerout50us)
 
 void vMBPortTimersEnable()
 {
+    /* 开启超时定时器 */
     rt_timer_start(&timer);
 }
 
@@ -59,5 +61,6 @@ void prvvTIMERExpiredISR(void)
 
 static void timer_timeout_ind(void* parameter)
 {
+    /* 超时后回调超期的 RTU 协议层的函数 */
     prvvTIMERExpiredISR();
 }

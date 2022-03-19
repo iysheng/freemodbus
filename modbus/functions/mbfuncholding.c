@@ -127,6 +127,9 @@ eMBFuncWriteMultipleHoldingRegister( UCHAR * pucFrame, USHORT * usLen )
 
         ucRegByteCount = pucFrame[MB_PDU_FUNC_WRITE_MUL_BYTECNT_OFF];
 
+        rt_kprintf("reg addr:%u counts:%u allcounts:%u\n", usRegAddress, usRegCount, ucRegByteCount);
+        show_hex(&pucFrame[MB_PDU_FUNC_WRITE_MUL_VALUES_OFF], ucRegByteCount, "dbg mudbus");
+
         if( ( usRegCount >= 1 ) &&
             ( usRegCount <= MB_PDU_FUNC_WRITE_MUL_REGCNT_MAX ) &&
             ( ucRegByteCount == ( UCHAR ) ( 2 * usRegCount ) ) )

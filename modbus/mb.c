@@ -105,6 +105,7 @@ static xMBFunctionHandler xFuncHandlers[MB_FUNC_HANDLERS_MAX] = {
 #if MB_FUNC_READ_HOLDING_ENABLED > 0
     {MB_FUNC_READ_HOLDING_REGISTER, eMBFuncReadHoldingRegister},
 #endif
+    /* 0x10 function */
 #if MB_FUNC_WRITE_MULTIPLE_HOLDING_ENABLED > 0
     {MB_FUNC_WRITE_MULTIPLE_REGISTERS, eMBFuncWriteMultipleHoldingRegister},
 #endif
@@ -153,6 +154,7 @@ eMBInit( eMBMode eMode, UCHAR ucSlaveAddress, UCHAR ucPort, ULONG ulBaudRate, eM
             peMBFrameSendCur = eMBRTUSend;
             peMBFrameReceiveCur = eMBRTUReceive;
             pvMBFrameCloseCur = MB_PORT_HAS_CLOSE ? vMBPortClose : NULL;
+            /* 关联接收到数据的函数指针 */
             pxMBFrameCBByteReceived = xMBRTUReceiveFSM;
             pxMBFrameCBTransmitterEmpty = xMBRTUTransmitFSM;
             pxMBPortCBTimerExpired = xMBRTUTimerT35Expired;
@@ -360,6 +362,7 @@ eMBErrorCode eMBPoll( void )
         case EV_READY:
             break;
 
+        /* 如果接收到一帧数据,或帧的地址，数据，数据长度 */
         case EV_FRAME_RECEIVED:
             eStatus = peMBFrameReceiveCur( &ucRcvAddress, &ucMBFrame, &usLength );
             if( eStatus == MB_ENOERR )
@@ -372,7 +375,9 @@ eMBErrorCode eMBPoll( void )
             }
             break;
 
+        /* 如果接收到一个有效数据帧 */
         case EV_EXECUTE:
+            /* 获取功能码 */
             ucFunctionCode = ucMBFrame[MB_PDU_FUNC_OFF];
             eException = MB_EX_ILLEGAL_FUNCTION;
             for( i = 0; i < MB_FUNC_HANDLERS_MAX; i++ )
@@ -382,6 +387,7 @@ eMBErrorCode eMBPoll( void )
                 {
                     break;
                 }
+                /* 如果匹配了这个功能码，那么执行这个功能码对应的回调函数 */
                 else if( xFuncHandlers[i].ucFunctionCode == ucFunctionCode )
                 {
                     eException = xFuncHandlers[i].pxHandler( ucMBFrame, &usLength );
@@ -391,6 +397,7 @@ eMBErrorCode eMBPoll( void )
 
             /* If the request was not sent to the broadcast address we
              * return a reply. */
+            /* 如果不是广播地址，那么需要返回应答 */
             if( ucRcvAddress != MB_ADDRESS_BROADCAST )
             {
                 if( eException != MB_EX_NONE )
@@ -400,6 +407,7 @@ eMBErrorCode eMBPoll( void )
                     ucMBFrame[usLength++] = ( UCHAR )( ucFunctionCode | MB_FUNC_ERROR );
                     ucMBFrame[usLength++] = eException;
                 }
+                /* 返回应答 */
                 eStatus = peMBFrameSendCur( ucMBAddress, ucMBFrame, usLength );
             }
             break;

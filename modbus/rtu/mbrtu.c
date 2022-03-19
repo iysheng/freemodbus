@@ -69,11 +69,15 @@ typedef enum
 static volatile eMBSndState eSndState;
 static volatile eMBRcvState eRcvState;
 
+/*
+ * 保存 Modbus 接收数据的全局变量
+ * */
 volatile UCHAR  ucRTUBuf[MB_SER_PDU_SIZE_MAX];
 
 static volatile UCHAR *pucSndBufferCur;
 static volatile USHORT usSndBufferCount;
 
+/* 当前获取的的数据的偏移，也即数据目前获取数据的最大长度 */
 static volatile USHORT usRcvBufferPos;
 
 /* ----------------------- Start implementation -----------------------------*/
@@ -112,6 +116,7 @@ eMBRTUInit( UCHAR ucSlaveAddress, UCHAR ucPort, ULONG ulBaudRate, eMBParity ePar
              */
             usTimerT35_50us = ( 7UL * 220000UL ) / ( 2UL * ulBaudRate );
         }
+        /* 初始化超时定时器 */
         if( xMBPortTimersInit( ( USHORT ) usTimerT35_50us ) != TRUE )
         {
             eStatus = MB_EPORTERR;
@@ -131,6 +136,7 @@ eMBRTUStart( void )
      * to STATE_RX_IDLE. This makes sure that we delay startup of the
      * modbus protocol stack until the bus is free.
      */
+    /* start 执行时候标记该函数为 INIT 状态 */
     eRcvState = STATE_RX_INIT;
     vMBPortSerialEnable( TRUE, FALSE );
     vMBPortTimersEnable(  );
@@ -147,29 +153,37 @@ eMBRTUStop( void )
     EXIT_CRITICAL_SECTION(  );
 }
 
+/*
+ * 获取 RTU 数据帧的回调函数，这个函数和具体的协议相关和物理层无关
+ * */
 eMBErrorCode
 eMBRTUReceive( UCHAR * pucRcvAddress, UCHAR ** pucFrame, USHORT * pusLength )
 {
     eMBErrorCode    eStatus = MB_ENOERR;
 
     ENTER_CRITICAL_SECTION(  );
+    /* 检查是数据长度是否有效 */
     RT_ASSERT( usRcvBufferPos <= MB_SER_PDU_SIZE_MAX );
 
     /* Length and CRC check */
+    /* 计算 CRC 校验是否匹配 */
     if( ( usRcvBufferPos >= MB_SER_PDU_SIZE_MIN )
         && ( usMBCRC16( ( UCHAR * ) ucRTUBuf, usRcvBufferPos ) == 0 ) )
     {
         /* Save the address field. All frames are passed to the upper layed
          * and the decision if a frame is used is done there.
          */
+        /* 继续出地址字段 */
         *pucRcvAddress = ucRTUBuf[MB_SER_PDU_ADDR_OFF];
 
         /* Total length of Modbus-PDU is Modbus-Serial-Line-PDU minus
          * size of address field and CRC checksum.
          */
+        /* 获取数据的长度 */
         *pusLength = ( USHORT )( usRcvBufferPos - MB_SER_PDU_PDU_OFF - MB_SER_PDU_SIZE_CRC );
 
         /* Return the start of the Modbus PDU to the caller. */
+        /* 获取数据段的首地址 */
         *pucFrame = ( UCHAR * ) & ucRTUBuf[MB_SER_PDU_PDU_OFF];
     }
     else
@@ -229,6 +243,7 @@ xMBRTUReceiveFSM( void )
     RT_ASSERT( eSndState == STATE_TX_IDLE );
 
     /* Always read the character. */
+    /* 调用物理层的回调函数，读取接收到的一个字节的数据 */
     ( void )xMBPortSerialGetByte( ( CHAR * ) & ucByte );
 
     switch ( eRcvState )
@@ -266,6 +281,7 @@ xMBRTUReceiveFSM( void )
          * ignored.
          */
     case STATE_RX_RCV:
+        /* 之前已经接收了数据，正在连续接收，继续保存 */
         if( usRcvBufferPos < MB_SER_PDU_SIZE_MAX )
         {
             ucRTUBuf[usRcvBufferPos++] = ucByte;
@@ -318,6 +334,9 @@ xMBRTUTransmitFSM( void )
     return xNeedPoll;
 }
 
+/*
+ * RTU 超期的回调函数
+ * */
 BOOL
 xMBRTUTimerT35Expired( void )
 {
@@ -327,11 +346,17 @@ xMBRTUTimerT35Expired( void )
     {
         /* Timer t35 expired. Startup phase is finished. */
     case STATE_RX_INIT:
+        /*
+         * 如果系统在 init 状态,超时后发送 READY 信号量
+         * */
         xNeedPoll = xMBPortEventPost( EV_READY );
         break;
 
         /* A frame was received and t35 expired. Notify the listener that
          * a new frame was received. */
+        /* 定时器超时，如果之前接收到了数据，那么标记接收到了一帧，即在里打断点
+         * 之前的都是一帧的数据
+         * */
     case STATE_RX_RCV:
         xNeedPoll = xMBPortEventPost( EV_FRAME_RECEIVED );
         break;
@@ -348,6 +373,7 @@ xMBRTUTimerT35Expired( void )
     }
 
     vMBPortTimersDisable(  );
+    /* 标记为空闲状态 */
     eRcvState = STATE_RX_IDLE;
 
     return xNeedPoll;

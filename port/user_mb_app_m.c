@@ -113,6 +113,7 @@ eMBErrorCode eMBMasterRegHoldingCB(UCHAR * pucRegBuffer, USHORT usAddress,
     REG_HOLDING_START = M_REG_HOLDING_START;
     REG_HOLDING_NREGS = M_REG_HOLDING_NREGS;
     usRegHoldStart = usMRegHoldStart;
+    rt_kprintf("holding addr=%u\n", usRegHoldStart);
     /* if mode is read, the master will write the received date to buffer. */
     eMode = MB_REG_WRITE;
 

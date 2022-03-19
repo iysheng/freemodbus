@@ -27,8 +27,8 @@
 #define MB_POLL_THREAD_PRIORITY  10
 #define MB_SEND_THREAD_PRIORITY  RT_THREAD_PRIORITY_MAX - 1
 
-#define MB_SEND_REG_START  2
-#define MB_SEND_REG_NUM    2
+#define MB_SEND_REG_START  100
+#define MB_SEND_REG_NUM    10
 
 #define MB_POLL_CYCLE_MS   500
 
@@ -36,7 +36,7 @@ static void send_thread_entry(void *parameter)
 {
     eMBMasterReqErrCode error_code = MB_MRE_NO_ERR;
     rt_uint16_t error_count = 0;
-    USHORT data[2] = {0};
+    USHORT data[MB_SEND_REG_NUM] = {0};
 
     while (1)
     {

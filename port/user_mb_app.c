@@ -112,7 +112,9 @@ eMBErrorCode eMBRegHoldingCB(UCHAR * pucRegBuffer, USHORT usAddress,
     REG_HOLDING_START = S_REG_HOLDING_START;
     REG_HOLDING_NREGS = S_REG_HOLDING_NREGS;
     usRegHoldStart = usSRegHoldStart;
+    rt_kprintf("holding start=%x\n", usRegHoldStart);
 
+    /* should add here for debug */
     /* it already plus one in modbus function method. */
     usAddress--;
 
